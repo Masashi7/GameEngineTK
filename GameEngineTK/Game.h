@@ -4,8 +4,13 @@
 
 #pragma once
 
-#include "StepTimer.h"
+#include <CommonStates.h>
+#include <Effects.h>
+#include <PrimitiveBatch.h>
+#include <SimpleMath.h>
+#include <VertexTypes.h>
 
+#include "StepTimer.h"
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
