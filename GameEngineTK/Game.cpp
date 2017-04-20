@@ -9,11 +9,9 @@ extern void ExitGame();
 
 using namespace DirectX;
 
-using Microsoft::WRL::ComPtr;
+using namespace DirectX::SimpleMath;
 
-std::unique_ptr<PrimitiveBatch<VertexPositionColor>> primitiveBatch;
-std::unique_ptr<BasicEffect> basicEffect;
-ComPtr<ID3D11InputLayout> inputLayout;
+using Microsoft::WRL::ComPtr;
 
 Game::Game() :
     m_window(0),
@@ -42,25 +40,40 @@ void Game::Initialize(HWND window, int width, int height)
     */
 
 	// 初期化はここに書く
+	m_batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
 
-	primitiveBatch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
+	//==ex=================================================
+	m_normalBatch = std::make_unique<PrimitiveBatch<VertexPositionNormal>>(m_d3dContext.Get());
+	//==ex=================================================
 
+	m_effect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
 
-	basicEffect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
+	// ビュー行列の作成
+	m_view = Matrix::CreateLookAt(Vector3(2.f, 2.f, 2.f),
+		Vector3::Zero, Vector3::UnitY);
+	// 
+	m_proj = Matrix::CreatePerspectiveFieldOfView(XM_PI / 4.f,
+		float(m_outputWidth) / float(m_outputHeight), 0.1f, 10.f);
 
-	basicEffect->SetProjection(XMMatrixOrthographicOffCenterRH(0,
-		m_outputWidth, m_outputHeight, 0, 0, 1));
-	basicEffect->SetVertexColorEnabled(true);
+	// ビュー行列の設定
+	m_effect->SetView(m_view);
+	//
+	m_effect->SetProjection(m_proj);
+
+	m_effect->SetVertexColorEnabled(true);
 
 	void const* shaderByteCode;
 	size_t byteCodeLength;
 
-	basicEffect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
+	m_effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
 
 	m_d3dDevice->CreateInputLayout(VertexPositionColor::InputElements,
 		VertexPositionColor::InputElementCount,
 		shaderByteCode, byteCodeLength,
-		inputLayout.GetAddressOf());
+		m_inputLayout.GetAddressOf());
+
+	// デバッグカメラ生成
+	m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth, m_outputHeight);
 }
 
 // Executes the basic game loop.
@@ -83,6 +96,10 @@ void Game::Update(DX::StepTimer const& timer)
     elapsedTime;
 
 	// 毎フレーム更新処理	
+	m_debugCamera->Update();
+
+	// ビュー行列を取得
+	m_view = m_debugCamera->GetCameraMatrix();
 }
 
 // Draws the scene.
@@ -96,22 +113,100 @@ void Game::Render()
 
     Clear();
 
+	//==ex=================================================
+	// 頂点インデックス
+	uint16_t indices[] =
+	{
+		0,1,2,
+		2,1,3,
+	};
+
+	// 頂点座標
+	VertexPositionNormal vertices[] =
+	{//				座標					法線ベクトル
+		{ Vector3(-1.0f, 1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
+		{ Vector3(-1.0f,-1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
+		{ Vector3(1.0f, 1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
+		{ Vector3(1.0f,-1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
+	};
+	//==ex=================================================
+
     // TODO: Add your rendering code here.
 	// 描画処理
-	CommonStates states(m_d3dDevice.Get());
-	m_d3dContext->OMSetBlendState(states.Opaque(), nullptr, 0xFFFFFFFF);
-	m_d3dContext->OMSetDepthStencilState(states.DepthNone(), 0);
-	m_d3dContext->RSSetState(states.CullNone());
+	CommonStates m_states(m_d3dDevice.Get());
+	m_d3dContext->OMSetBlendState(m_states.Opaque(), nullptr, 0xFFFFFFFF);
+	m_d3dContext->OMSetDepthStencilState(m_states.DepthNone(), 0);
+	m_d3dContext->RSSetState(m_states.CullNone());
+	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 	
-	basicEffect->Apply(m_d3dContext.Get());
-	m_d3dContext->IASetInputLayout(inputLayout.Get());
+	// ワールド座標の設定
+	m_effect->SetWorld(m_world);
+	// ビュー行列の設定
+	m_effect->SetView(m_view);
+	//
+	m_effect->SetProjection(m_proj);
 
-	primitiveBatch->Begin();
-	primitiveBatch->DrawLine(
-		VertexPositionColor(SimpleMath::Vector3(0, 0, 0), SimpleMath::Color(1, 1, 1)),
-		VertexPositionColor(SimpleMath::Vector3(800, 600, 0), SimpleMath::Color(1, 1, 1))
-	);
-	primitiveBatch->End();
+	m_effect->Apply(m_d3dContext.Get());
+
+	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
+
+	// 描画開始
+	m_batch->Begin();
+
+	/*グリッドの描画
+	Vector3 xaxis(2.f, 0.f, 0.f);
+	Vector3 yaxis(0.f, 0.f, 2.f);
+	Vector3 origin = Vector3::Zero;
+
+	size_t divisions = 20;
+
+	for (size_t i = 0; i <= divisions; ++i)
+	{
+		float fPercent = float(i) / float(divisions);
+		fPercent = (fPercent * 2.0f) - 1.0f;
+
+		Vector3 scale = xaxis * fPercent + origin;
+
+		VertexPositionColor v1(scale - yaxis, Colors::White);
+		VertexPositionColor v2(scale + yaxis, Colors::White);
+		m_batch->DrawLine(v1, v2);
+	}
+
+	for (size_t i = 0; i <= divisions; i++)
+	{
+		float fPercent = float(i) / float(divisions);
+		fPercent = (fPercent * 2.0f) - 1.0f;
+
+		Vector3 scale = yaxis * fPercent + origin;
+
+		VertexPositionColor v1(scale - xaxis, Colors::White);
+		VertexPositionColor v2(scale + xaxis, Colors::White);
+		m_batch->DrawLine(v1, v2);
+	}
+	*/
+
+	// 三角形の頂点設定
+	VertexPositionColor v1(Vector3(0.f, 0.5f, 0.5f), Colors::Yellow);
+	VertexPositionColor v2(Vector3(0.5f, -0.5f, 0.5f), Colors::Yellow);
+	VertexPositionColor v3(Vector3(-0.5f, -0.5f, 0.5f), Colors::Yellow);
+
+	// 三角形の描画
+	m_batch->DrawTriangle(v1, v2, v3);
+
+	// 描画終了
+	m_batch->End();
+
+
+	//==ex=================================================
+	// 描画開始
+	m_normalBatch->Begin();
+
+	// 頂点情報を渡して描画
+	m_normalBatch->DrawIndexed(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, indices, 6, vertices, 4);
+
+	// 描画終了
+	m_normalBatch->End();
+	//==ex=================================================
 
     Present();
 }

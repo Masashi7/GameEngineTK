@@ -6,10 +6,11 @@
 
 #include <CommonStates.h>
 #include <Effects.h>
-#include <PrimitiveBatch.h>
 #include <SimpleMath.h>
+#include <PrimitiveBatch.h>
 #include <VertexTypes.h>
 
+#include "DebugCamera.h"
 #include "StepTimer.h"
 
 // A basic game implementation that creates a D3D11 device and
@@ -67,4 +68,18 @@ private:
 
     // Rendering loop timer.
     DX::StepTimer                                   m_timer;
+
+	std::unique_ptr<DirectX::BasicEffect> m_effect;
+	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> m_batch;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
+
+	DirectX::SimpleMath::Matrix m_world;
+	DirectX::SimpleMath::Matrix m_view;
+	DirectX::SimpleMath::Matrix m_proj;
+
+	// デバッグカメラ
+	std::unique_ptr<DebugCamera> m_debugCamera;
+
+	//==ex=================================================
+	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionNormal>> m_normalBatch;
 };
