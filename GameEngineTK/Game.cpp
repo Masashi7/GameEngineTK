@@ -24,20 +24,20 @@ Game::Game() :
 // Initialize the Direct3D resources required to run.
 void Game::Initialize(HWND window, int width, int height)
 {
-    m_window = window;
-    m_outputWidth = std::max(width, 1);
+	m_window = window;
+	m_outputWidth = std::max(width, 1);
 	m_outputHeight = std::max(height, 1);
 
-    CreateDevice();
+	CreateDevice();
 
-    CreateResources();
+	CreateResources();
 
-    // TODO: Change the timer settings if you want something other than the default variable timestep mode.
-    // e.g. for 60 FPS fixed timestep update logic, call:
-    /*
-    m_timer.SetFixedTimeStep(true);
-    m_timer.SetTargetElapsedSeconds(1.0 / 60);
-    */
+	// TODO: Change the timer settings if you want something other than the default variable timestep mode.
+	// e.g. for 60 FPS fixed timestep update logic, call:
+	/*
+	m_timer.SetFixedTimeStep(true);
+	m_timer.SetTargetElapsedSeconds(1.0 / 60);
+	*/
 
 	// 初期化はここに書く
 	m_batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
@@ -53,7 +53,7 @@ void Game::Initialize(HWND window, int width, int height)
 		Vector3::Zero, Vector3::UnitY);
 	// 
 	m_proj = Matrix::CreatePerspectiveFieldOfView(XM_PI / 4.f,
-		float(m_outputWidth) / float(m_outputHeight), 0.1f, 10.f);
+		float(m_outputWidth) / float(m_outputHeight), 0.1f, 500.f);
 
 	// ビュー行列の設定
 	m_effect->SetView(m_view);
@@ -74,6 +74,18 @@ void Game::Initialize(HWND window, int width, int height)
 
 	// デバッグカメラ生成
 	m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth, m_outputHeight);
+
+	m_factory = std::make_unique<EffectFactory>(m_d3dDevice.Get());
+	// テクスチャの読み込みパスを設定
+	m_factory->SetDirectory(L"Resources");
+	// 地形モデルの読み込みと生成
+	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ground1M.cmo", *m_factory);
+	//m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ground200.cmo", *m_factory);
+	// 天球モデルの読み込みと生成
+	m_modelSkydome = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/SkyDome.cmo", *m_factory);
+
+	// 球モデルの読み込みと生成
+	m_modelBall = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ball.cmo", *m_factory);
 }
 
 // Executes the basic game loop.
@@ -100,6 +112,23 @@ void Game::Update(DX::StepTimer const& timer)
 
 	// ビュー行列を取得
 	m_view = m_debugCamera->GetCameraMatrix();
+
+	//// 半球のワールド行列を計算
+
+	//Matrix scalemat = SimpleMath::Matrix::CreateScale(0.5f);
+	//// ロール
+	//Matrix rotmatZ = Matrix::CreateRotationZ(XMConvertToRadians(0.0f));
+	//// ビッチ（仰角）
+	//Matrix rotmatX = Matrix::CreateRotationX(XMConvertToRadians(0.0f));
+	//// ヨー（方位角）
+	//Matrix rotmatY = Matrix::CreateRotationY(XMConvertToRadians(0.0f));
+	//// 回転行列（合成）
+	//Matrix rotmat = rotmatZ * rotmatX * rotmatY;
+	//// 平行移動
+	//Matrix transmat = Matrix::CreateTranslation(0.0f, 0, 20);
+
+	//// ワールド行列の合成
+	//m_worldBall = scalemat * transmat * rotmat;
 }
 
 // Draws the scene.
@@ -150,6 +179,60 @@ void Game::Render()
 
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
+	// 地面モデルの描画
+	//m_modelGround->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
+	for (int i = 0; i < 200; i++)
+	{
+		for (int j = 0; j < 200; j++)
+		{
+			// 平行移動
+			Matrix transmat = Matrix::CreateTranslation(i-100, 0, j-100);
+
+			m_modelGround->Draw(m_d3dContext.Get(), m_states, transmat, m_view, m_proj);
+		}
+	}
+	// 天球モデルの描画
+	m_modelSkydome->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
+
+	// 球モデルの描画
+	for (int i = 0; i < 20; i++)
+	{
+		Matrix scalemat = SimpleMath::Matrix::CreateScale(1.0f);
+		// ロール
+		Matrix rotmatZ = Matrix::CreateRotationZ(XMConvertToRadians(0.0f));
+		// ビッチ（仰角）
+		Matrix rotmatX = Matrix::CreateRotationX(XMConvertToRadians(0.0f));
+		// ヨー（方位角）
+		Matrix rotmatY;
+		if (i < 10)
+		{
+			rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) + rotCnt));
+		}
+		else
+		{
+			rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) - rotCnt));
+		}
+		// 回転行列（合成）
+		Matrix rotmat = rotmatZ * rotmatX * rotmatY;
+		// 平行移動
+		Matrix transmat;
+		if (i < 10)
+		{
+			transmat = Matrix::CreateTranslation(0.0f, 0, 20);
+		}
+		else
+		{
+			transmat = Matrix::CreateTranslation(0.0f, 0, 40);
+		}
+
+		// ワールド行列の合成
+		m_worldBall = scalemat * transmat * rotmat;
+	
+		m_modelBall->Draw(m_d3dContext.Get(), m_states, m_worldBall, m_view, m_proj);
+	}
+
+	rotCnt += 1.0f;
+
 	// 描画開始
 	m_batch->Begin();
 
@@ -185,28 +268,28 @@ void Game::Render()
 	}
 	*/
 
-	// 三角形の頂点設定
-	VertexPositionColor v1(Vector3(0.f, 0.5f, 0.5f), Colors::Yellow);
-	VertexPositionColor v2(Vector3(0.5f, -0.5f, 0.5f), Colors::Yellow);
-	VertexPositionColor v3(Vector3(-0.5f, -0.5f, 0.5f), Colors::Yellow);
+	//// 三角形の頂点設定
+	//VertexPositionColor v1(Vector3(0.f, 0.5f, 0.5f), Colors::Yellow);
+	//VertexPositionColor v2(Vector3(0.5f, -0.5f, 0.5f), Colors::Yellow);
+	//VertexPositionColor v3(Vector3(-0.5f, -0.5f, 0.5f), Colors::Yellow);
 
-	// 三角形の描画
-	m_batch->DrawTriangle(v1, v2, v3);
+	//// 三角形の描画
+	//m_batch->DrawTriangle(v1, v2, v3);
 
 	// 描画終了
 	m_batch->End();
 
 
-	//==ex=================================================
-	// 描画開始
-	m_normalBatch->Begin();
+	////==ex=================================================
+	//// 描画開始
+	//m_normalBatch->Begin();
 
-	// 頂点情報を渡して描画
-	m_normalBatch->DrawIndexed(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, indices, 6, vertices, 4);
+	//// 頂点情報を渡して描画
+	//m_normalBatch->DrawIndexed(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, indices, 6, vertices, 4);
 
-	// 描画終了
-	m_normalBatch->End();
-	//==ex=================================================
+	//// 描画終了
+	//m_normalBatch->End();
+	////==ex=================================================
 
     Present();
 }

@@ -7,6 +7,7 @@
 #include <CommonStates.h>
 #include <Effects.h>
 #include <SimpleMath.h>
+#include <Model.h>
 #include <PrimitiveBatch.h>
 #include <VertexTypes.h>
 
@@ -82,4 +83,20 @@ private:
 
 	//==ex=================================================
 	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionNormal>> m_normalBatch;
+	//==ex=================================================
+
+	// エフェクトファクトリの作成
+	std::unique_ptr<DirectX::EffectFactory> m_factory;
+
+	// 地形モデル
+	std::unique_ptr<DirectX::Model> m_modelGround;
+	// 天球モデル
+	std::unique_ptr<DirectX::Model> m_modelSkydome;
+	// 球モデル
+	std::unique_ptr<DirectX::Model> m_modelBall;
+
+	// 球ワールド行列
+	DirectX::SimpleMath::Matrix m_worldBall;
+
+	int rotCnt = 0.0f;
 };
