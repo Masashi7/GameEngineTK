@@ -7,6 +7,7 @@
 #include <CommonStates.h>
 #include <Effects.h>
 #include <SimpleMath.h>
+#include <time.h>
 #include <Model.h>
 #include <PrimitiveBatch.h>
 #include <VertexTypes.h>
@@ -94,9 +95,20 @@ private:
 	std::unique_ptr<DirectX::Model> m_modelSkydome;
 	// 球モデル
 	std::unique_ptr<DirectX::Model> m_modelBall;
+	// ティーポットモデル
+	std::unique_ptr<DirectX::Model> m_modelTeapot;
 
 	// 球ワールド行列
 	DirectX::SimpleMath::Matrix m_worldBall;
 
-	int rotCnt = 0.0f;
+	// ティーポットワールド行列
+	DirectX::SimpleMath::Matrix m_worldTeapot;
+
+	float m_posX[20];
+
+	float m_posZ[20];
+
+	float rotCnt = 0.0f;
+	int scaleCnt = 0;
+	float transCnt = 1.0f;
 };

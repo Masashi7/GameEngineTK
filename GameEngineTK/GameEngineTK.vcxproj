@@ -197,6 +197,7 @@
     <MeshContentTask Include="Assets\ground1M.FBX" />
     <MeshContentTask Include="Assets\Ground200.FBX" />
     <MeshContentTask Include="Assets\SkyDome.FBX" />
+    <MeshContentTask Include="Assets\teapot.FBX" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

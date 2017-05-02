@@ -2,6 +2,8 @@
 // Game.cpp
 //
 
+#include <random>
+
 #include "pch.h"
 #include "Game.h"
 
@@ -10,6 +12,8 @@ extern void ExitGame();
 using namespace DirectX;
 
 using namespace DirectX::SimpleMath;
+
+using namespace std;
 
 using Microsoft::WRL::ComPtr;
 
@@ -79,13 +83,26 @@ void Game::Initialize(HWND window, int width, int height)
 	// テクスチャの読み込みパスを設定
 	m_factory->SetDirectory(L"Resources");
 	// 地形モデルの読み込みと生成
-	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ground1M.cmo", *m_factory);
-	//m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ground200.cmo", *m_factory);
+	m_modelGround = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ground200.cmo", *m_factory);
 	// 天球モデルの読み込みと生成
 	m_modelSkydome = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/SkyDome.cmo", *m_factory);
 
 	// 球モデルの読み込みと生成
 	m_modelBall = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ball.cmo", *m_factory);
+	// ティーポットモデルの読み込みと生成
+	m_modelTeapot = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/teapot.cmo", *m_factory);
+
+	random_device rnd;     // 非決定的な乱数生成器を生成
+	mt19937_64 mt(rnd());     //  メルセンヌ・ツイスタの32ビット版、引数は初期シード値
+	uniform_int_distribution<> rand100(0, 99);        // [1, 100] 範囲の一様乱数
+	uniform_int_distribution<> rand360(0, 359);		  // [1, 360] 範囲の一様乱数
+
+	for (int i = 0; i < 20; i++)
+	{
+		m_posX[i] = cosf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
+
+		m_posZ[i] = sinf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
+	}
 }
 
 // Executes the basic game loop.
@@ -112,62 +129,27 @@ void Game::Update(DX::StepTimer const& timer)
 
 	// ビュー行列を取得
 	m_view = m_debugCamera->GetCameraMatrix();
-
-	//// 半球のワールド行列を計算
-
-	//Matrix scalemat = SimpleMath::Matrix::CreateScale(0.5f);
-	//// ロール
-	//Matrix rotmatZ = Matrix::CreateRotationZ(XMConvertToRadians(0.0f));
-	//// ビッチ（仰角）
-	//Matrix rotmatX = Matrix::CreateRotationX(XMConvertToRadians(0.0f));
-	//// ヨー（方位角）
-	//Matrix rotmatY = Matrix::CreateRotationY(XMConvertToRadians(0.0f));
-	//// 回転行列（合成）
-	//Matrix rotmat = rotmatZ * rotmatX * rotmatY;
-	//// 平行移動
-	//Matrix transmat = Matrix::CreateTranslation(0.0f, 0, 20);
-
-	//// ワールド行列の合成
-	//m_worldBall = scalemat * transmat * rotmat;
 }
 
 // Draws the scene.
 void Game::Render()
 {
     // Don't try to render anything before the first Update.
-    if (m_timer.GetFrameCount() == 0)
-    {
-        return;
-    }
-
-    Clear();
-
-	//==ex=================================================
-	// 頂点インデックス
-	uint16_t indices[] =
+	if (m_timer.GetFrameCount() == 0)
 	{
-		0,1,2,
-		2,1,3,
-	};
+		return;
+	}
 
-	// 頂点座標
-	VertexPositionNormal vertices[] =
-	{//				座標					法線ベクトル
-		{ Vector3(-1.0f, 1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
-		{ Vector3(-1.0f,-1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
-		{ Vector3(1.0f, 1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
-		{ Vector3(1.0f,-1.0f,0.0f),Vector3(0.0f,0.0f,1.0f) },
-	};
-	//==ex=================================================
+	Clear();
 
-    // TODO: Add your rendering code here.
+	// TODO: Add your rendering code here.
 	// 描画処理
 	CommonStates m_states(m_d3dDevice.Get());
 	m_d3dContext->OMSetBlendState(m_states.Opaque(), nullptr, 0xFFFFFFFF);
 	m_d3dContext->OMSetDepthStencilState(m_states.DepthNone(), 0);
 	m_d3dContext->RSSetState(m_states.CullNone());
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
-	
+
 	// ワールド座標の設定
 	m_effect->SetWorld(m_world);
 	// ビュー行列の設定
@@ -180,28 +162,14 @@ void Game::Render()
 	m_d3dContext->IASetInputLayout(m_inputLayout.Get());
 
 	// 地面モデルの描画
-	//m_modelGround->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
-	for (int i = 0; i < 200; i++)
-	{
-		for (int j = 0; j < 200; j++)
-		{
-			// 平行移動
-			Matrix transmat = Matrix::CreateTranslation(i-100, 0, j-100);
+	m_modelGround->Draw(m_d3dContext.Get(), m_states, Matrix::Identity, m_view, m_proj);
 
-			m_modelGround->Draw(m_d3dContext.Get(), m_states, transmat, m_view, m_proj);
-		}
-	}
 	// 天球モデルの描画
 	m_modelSkydome->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
 
 	// 球モデルの描画
 	for (int i = 0; i < 20; i++)
 	{
-		Matrix scalemat = SimpleMath::Matrix::CreateScale(1.0f);
-		// ロール
-		Matrix rotmatZ = Matrix::CreateRotationZ(XMConvertToRadians(0.0f));
-		// ビッチ（仰角）
-		Matrix rotmatX = Matrix::CreateRotationX(XMConvertToRadians(0.0f));
 		// ヨー（方位角）
 		Matrix rotmatY;
 		if (i < 10)
@@ -212,8 +180,7 @@ void Game::Render()
 		{
 			rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) - rotCnt));
 		}
-		// 回転行列（合成）
-		Matrix rotmat = rotmatZ * rotmatX * rotmatY;
+
 		// 平行移動
 		Matrix transmat;
 		if (i < 10)
@@ -226,70 +193,34 @@ void Game::Render()
 		}
 
 		// ワールド行列の合成
-		m_worldBall = scalemat * transmat * rotmat;
-	
+		m_worldBall = transmat * rotmatY;
+
 		m_modelBall->Draw(m_d3dContext.Get(), m_states, m_worldBall, m_view, m_proj);
 	}
 
+	for (int i = 0; i < 20; i++)
+	{
+		//Matrix scalemat = SimpleMath::Matrix::CreateScale(1.0f);
+		Matrix scalemat = SimpleMath::Matrix::CreateScale((sinf(XMConvertToRadians(scaleCnt))+1.0f)*2.0f);
+		// ヨー（方位角）
+		Matrix rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) + rotCnt));
+
+		// 平行移動
+		Matrix transmat = Matrix::CreateTranslation(m_posX[i] * transCnt, 0, m_posZ[i] * transCnt);
+		
+		// ワールド行列の合成
+		m_worldTeapot = scalemat * rotmatY * transmat;
+
+		m_modelTeapot->Draw(m_d3dContext.Get(), m_states, m_worldTeapot, m_view, m_proj);
+	}
+	
 	rotCnt += 1.0f;
-
-	// 描画開始
-	m_batch->Begin();
-
-	/*グリッドの描画
-	Vector3 xaxis(2.f, 0.f, 0.f);
-	Vector3 yaxis(0.f, 0.f, 2.f);
-	Vector3 origin = Vector3::Zero;
-
-	size_t divisions = 20;
-
-	for (size_t i = 0; i <= divisions; ++i)
-	{
-		float fPercent = float(i) / float(divisions);
-		fPercent = (fPercent * 2.0f) - 1.0f;
-
-		Vector3 scale = xaxis * fPercent + origin;
-
-		VertexPositionColor v1(scale - yaxis, Colors::White);
-		VertexPositionColor v2(scale + yaxis, Colors::White);
-		m_batch->DrawLine(v1, v2);
-	}
-
-	for (size_t i = 0; i <= divisions; i++)
-	{
-		float fPercent = float(i) / float(divisions);
-		fPercent = (fPercent * 2.0f) - 1.0f;
-
-		Vector3 scale = yaxis * fPercent + origin;
-
-		VertexPositionColor v1(scale - xaxis, Colors::White);
-		VertexPositionColor v2(scale + xaxis, Colors::White);
-		m_batch->DrawLine(v1, v2);
-	}
-	*/
-
-	//// 三角形の頂点設定
-	//VertexPositionColor v1(Vector3(0.f, 0.5f, 0.5f), Colors::Yellow);
-	//VertexPositionColor v2(Vector3(0.5f, -0.5f, 0.5f), Colors::Yellow);
-	//VertexPositionColor v3(Vector3(-0.5f, -0.5f, 0.5f), Colors::Yellow);
-
-	//// 三角形の描画
-	//m_batch->DrawTriangle(v1, v2, v3);
-
-	// 描画終了
-	m_batch->End();
+	scaleCnt++;
+	transCnt -= 0.1f / 60.0f;
+	if(transCnt < 0)
+		transCnt = 0;
 
 
-	////==ex=================================================
-	//// 描画開始
-	//m_normalBatch->Begin();
-
-	//// 頂点情報を渡して描画
-	//m_normalBatch->DrawIndexed(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, indices, 6, vertices, 4);
-
-	//// 描画終了
-	//m_normalBatch->End();
-	////==ex=================================================
 
     Present();
 }
