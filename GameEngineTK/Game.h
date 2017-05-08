@@ -6,9 +6,10 @@
 
 #include <CommonStates.h>
 #include <Effects.h>
+#include <Keyboard.h>
+#include <Model.h>
 #include <SimpleMath.h>
 #include <time.h>
-#include <Model.h>
 #include <PrimitiveBatch.h>
 #include <VertexTypes.h>
 
@@ -98,6 +99,9 @@ private:
 	// ティーポットモデル
 	std::unique_ptr<DirectX::Model> m_modelTeapot;
 
+	// 頭モデル
+	std::unique_ptr<DirectX::Model> m_modelHead;
+
 	// 球ワールド行列
 	DirectX::SimpleMath::Matrix m_worldBall;
 
@@ -111,4 +115,15 @@ private:
 	float rotCnt = 0.0f;
 	int scaleCnt = 0;
 	float transCnt = 1.0f;
+
+	//　キーボード変数の宣言
+	std::unique_ptr<DirectX::Keyboard> keyboard;
+
+	// 自機の座標
+	DirectX::SimpleMath::Vector3 tank_pos;
+
+	DirectX::SimpleMath::Vector3 tank_rot;
+	
+	// 自機のワールド座標
+	DirectX::SimpleMath::Matrix tank_world;
 };

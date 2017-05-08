@@ -196,6 +196,7 @@
     <MeshContentTask Include="Assets\ball.FBX" />
     <MeshContentTask Include="Assets\ground1M.FBX" />
     <MeshContentTask Include="Assets\Ground200.FBX" />
+    <MeshContentTask Include="Assets\head.FBX" />
     <MeshContentTask Include="Assets\SkyDome.FBX" />
     <MeshContentTask Include="Assets\teapot.FBX" />
   </ItemGroup>

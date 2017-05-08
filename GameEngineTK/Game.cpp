@@ -46,10 +46,6 @@ void Game::Initialize(HWND window, int width, int height)
 	// 初期化はここに書く
 	m_batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
 
-	//==ex=================================================
-	m_normalBatch = std::make_unique<PrimitiveBatch<VertexPositionNormal>>(m_d3dContext.Get());
-	//==ex=================================================
-
 	m_effect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
 
 	// ビュー行列の作成
@@ -92,10 +88,13 @@ void Game::Initialize(HWND window, int width, int height)
 	// ティーポットモデルの読み込みと生成
 	m_modelTeapot = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/teapot.cmo", *m_factory);
 
+	// 頭モデルの読み込みと生成
+	m_modelHead = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/head.cmo", *m_factory);
+
 	random_device rnd;     // 非決定的な乱数生成器を生成
 	mt19937_64 mt(rnd());     //  メルセンヌ・ツイスタの32ビット版、引数は初期シード値
-	uniform_int_distribution<> rand100(0, 99);        // [1, 100] 範囲の一様乱数
-	uniform_int_distribution<> rand360(0, 359);		  // [1, 360] 範囲の一様乱数
+	uniform_int_distribution<> rand100(0, 99);        // [0, 99] 範囲の一様乱数
+	uniform_int_distribution<> rand360(0, 359);		  // [0, 359] 範囲の一様乱数
 
 	for (int i = 0; i < 20; i++)
 	{
@@ -103,6 +102,9 @@ void Game::Initialize(HWND window, int width, int height)
 
 		m_posZ[i] = sinf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
 	}
+
+	// キーボードの初期化
+	keyboard = std::make_unique<Keyboard>();
 }
 
 // Executes the basic game loop.
@@ -195,32 +197,84 @@ void Game::Render()
 		// ワールド行列の合成
 		m_worldBall = transmat * rotmatY;
 
+		// モデルの描画
 		m_modelBall->Draw(m_d3dContext.Get(), m_states, m_worldBall, m_view, m_proj);
 	}
 
-	for (int i = 0; i < 20; i++)
-	{
-		//Matrix scalemat = SimpleMath::Matrix::CreateScale(1.0f);
-		Matrix scalemat = SimpleMath::Matrix::CreateScale((sinf(XMConvertToRadians(scaleCnt))+1.0f)*2.0f);
-		// ヨー（方位角）
-		Matrix rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) + rotCnt));
+	//for (int i = 0; i < 20; i++)
+	//{
+	//	//Matrix scalemat = SimpleMath::Matrix::CreateScale(1.0f);
+	//	Matrix scalemat = SimpleMath::Matrix::CreateScale((sinf(XMConvertToRadians(scaleCnt))+1.0f));
+	//	// ヨー（方位角）
+	//	Matrix rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) + rotCnt));
 
-		// 平行移動
-		Matrix transmat = Matrix::CreateTranslation(m_posX[i] * transCnt, 0, m_posZ[i] * transCnt);
-		
-		// ワールド行列の合成
-		m_worldTeapot = scalemat * rotmatY * transmat;
+	//	// 平行移動
+	//	Matrix transmat = Matrix::CreateTranslation(m_posX[i] * transCnt, 0, m_posZ[i] * transCnt);
+	//	
+	//	// ワールド行列の合成
+	//	m_worldTeapot = scalemat * rotmatY * transmat;
 
-		m_modelTeapot->Draw(m_d3dContext.Get(), m_states, m_worldTeapot, m_view, m_proj);
-	}
-	
+	//	// モデルの描画
+	//	m_modelTeapot->Draw(m_d3dContext.Get(), m_states, m_worldTeapot, m_view, m_proj);
+	//}
+
 	rotCnt += 1.0f;
 	scaleCnt++;
 	transCnt -= 0.1f / 60.0f;
 	if(transCnt < 0)
 		transCnt = 0;
 
+	auto kb = keyboard->GetState();
 
+	// W key is down
+	if (kb.W)
+	{
+		// 移動量のベクトル
+		Vector3 moveV(0, 0, -0.1f);
+		// 移動量ベクトルを時期に角度分回転させる
+		moveV = Vector3::TransformNormal(moveV, tank_world);
+		// 時期の座標を移動させる
+		tank_pos += moveV;
+	}
+
+	// A key is down
+	if (kb.A)
+	{
+		// 移動量のベクトル
+		Vector3 rot(0, 0.1f, 0);
+		// 時期の座標を移動させる
+		tank_rot += rot;
+	}
+
+	// S key is down
+	if (kb.S)
+	{
+		// 移動量のベクトル
+		Vector3 moveV(0, 0, 0.1f);
+		// 移動量ベクトルを時期に角度分回転させる
+		moveV = Vector3::TransformNormal(moveV, tank_world);
+		// 時期の座標を移動させる
+		tank_pos += moveV;
+	}
+
+	// D key is down
+	if (kb.D)
+	{
+		// 移動量のベクトル
+		Vector3 rot(0, -0.1f, 0);
+		// 時期の座標を移動させる
+		tank_rot += rot;
+	}
+
+	// 時期のワールド座標を計算
+	Matrix transmat = Matrix::CreateTranslation(tank_pos);
+
+	Matrix rotmatY = Matrix::CreateRotationY(tank_rot.y);
+
+	// 平行移動行列をワールド行列にコピー
+	tank_world = rotmatY * transmat;
+	// モデルの描画
+	m_modelHead->Draw(m_d3dContext.Get(), m_states, tank_world, m_view, m_proj);
 
     Present();
 }

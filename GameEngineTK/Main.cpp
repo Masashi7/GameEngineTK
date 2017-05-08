@@ -188,6 +188,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 game->OnDeactivated();
             }
         }
+		Keyboard::ProcessMessage(message, wParam, lParam);
         break;
 
     case WM_POWERBROADCAST:
@@ -243,6 +244,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
 
             s_fullscreen = !s_fullscreen;
+			Keyboard::ProcessMessage(message, wParam, lParam);
         }
         break;
 
@@ -265,11 +267,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case WM_MOUSEHOVER:
 		Mouse::ProcessMessage(message, wParam, lParam);
 		break;
-    }
 
+		case WM_KEYDOWN:
+		case WM_KEYUP:
+		case WM_SYSKEYUP:
+			Keyboard::ProcessMessage(message, wParam, lParam);
+			break;
+    }
     return DefWindowProc(hWnd, message, wParam, lParam);
 }
-
 
 // Exit helper
 void ExitGame()
