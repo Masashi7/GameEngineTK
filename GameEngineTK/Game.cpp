@@ -51,7 +51,8 @@ void Game::Initialize(HWND window, int width, int height)
 	// ビュー行列の作成
 	m_view = Matrix::CreateLookAt(Vector3(2.f, 2.f, 2.f),
 		Vector3::Zero, Vector3::UnitY);
-	// 
+	
+	// プロジェクション行列の作成
 	m_proj = Matrix::CreatePerspectiveFieldOfView(XM_PI / 4.f,
 		float(m_outputWidth) / float(m_outputHeight), 0.1f, 500.f);
 
@@ -73,7 +74,10 @@ void Game::Initialize(HWND window, int width, int height)
 		m_inputLayout.GetAddressOf());
 
 	// デバッグカメラ生成
-	m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth, m_outputHeight);
+	//m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth, m_outputHeight);
+
+	// カメラ生成
+	m_Camera = std::make_unique<FollowCamera>(m_outputWidth, m_outputHeight);
 
 	m_factory = std::make_unique<EffectFactory>(m_d3dDevice.Get());
 	// テクスチャの読み込みパスを設定
@@ -121,16 +125,23 @@ void Game::Tick()
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer)
 {
-    float elapsedTime = float(timer.GetElapsedSeconds());
+	float elapsedTime = float(timer.GetElapsedSeconds());
 
-    // TODO: Add your game logic here.
-    elapsedTime;
+	// TODO: Add your game logic here.
+	elapsedTime;
+
+	m_Camera->SetTaegetPos(tank_pos);
+	m_Camera->SetTargetAngle(tank_angle);
 
 	// 毎フレーム更新処理	
-	m_debugCamera->Update();
+	//m_debugCamera->Update();
+	m_Camera->Update();
 
 	// ビュー行列を取得
-	m_view = m_debugCamera->GetCameraMatrix();
+	//m_view = m_debugCamera->GetCameraMatrix();
+
+	m_view = m_Camera->GetViewMatrix();
+	m_proj = m_Camera->GetProjectionMatrix();
 }
 
 // Draws the scene.
@@ -156,7 +167,7 @@ void Game::Render()
 	m_effect->SetWorld(m_world);
 	// ビュー行列の設定
 	m_effect->SetView(m_view);
-	//
+	// プロジェクション行列の設定
 	m_effect->SetProjection(m_proj);
 
 	m_effect->Apply(m_d3dContext.Get());
@@ -217,7 +228,7 @@ void Game::Render()
 	//	// モデルの描画
 	//	m_modelTeapot->Draw(m_d3dContext.Get(), m_states, m_worldTeapot, m_view, m_proj);
 	//}
-
+	
 	rotCnt += 1.0f;
 	scaleCnt++;
 	transCnt -= 0.1f / 60.0f;
@@ -240,10 +251,7 @@ void Game::Render()
 	// A key is down
 	if (kb.A)
 	{
-		// 移動量のベクトル
-		Vector3 rot(0, 0.1f, 0);
-		// 時期の座標を移動させる
-		tank_rot += rot;
+		tank_angle += 0.1f;
 	}
 
 	// S key is down
@@ -260,16 +268,14 @@ void Game::Render()
 	// D key is down
 	if (kb.D)
 	{
-		// 移動量のベクトル
-		Vector3 rot(0, -0.1f, 0);
-		// 時期の座標を移動させる
-		tank_rot += rot;
+		tank_angle += -0.1f;
 	}
 
 	// 時期のワールド座標を計算
 	Matrix transmat = Matrix::CreateTranslation(tank_pos);
 
-	Matrix rotmatY = Matrix::CreateRotationY(tank_rot.y);
+	//Matrix rotmatY = Matrix::CreateRotationY(tank_rot.y);
+	Matrix rotmatY = Matrix::CreateRotationY(tank_angle);
 
 	// 平行移動行列をワールド行列にコピー
 	tank_world = rotmatY * transmat;

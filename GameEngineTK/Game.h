@@ -16,6 +16,8 @@
 #include "DebugCamera.h"
 #include "StepTimer.h"
 
+#include "FollowCamera.h"
+
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
 class Game
@@ -81,7 +83,7 @@ private:
 	DirectX::SimpleMath::Matrix m_proj;
 
 	// デバッグカメラ
-	std::unique_ptr<DebugCamera> m_debugCamera;
+	//std::unique_ptr<DebugCamera> m_debugCamera;
 
 	//==ex=================================================
 	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionNormal>> m_normalBatch;
@@ -122,8 +124,11 @@ private:
 	// 自機の座標
 	DirectX::SimpleMath::Vector3 tank_pos;
 
-	DirectX::SimpleMath::Vector3 tank_rot;
+	float tank_angle;
 	
 	// 自機のワールド座標
 	DirectX::SimpleMath::Matrix tank_world;
+
+	// カメラ
+	std::unique_ptr<FollowCamera> m_Camera;
 };
