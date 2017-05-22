@@ -23,19 +23,19 @@ Camera::~Camera()
 
 void Camera::Update()
 {
-	Matrix::CreateLookAt(m_eyepos, m_refpos, m_upvec);
+	m_view = Matrix::CreateLookAt(m_eyepos, m_refpos, m_upvec);
 
-	Matrix::CreatePerspectiveFieldOfView(m_fovY, m_aspect, m_nearClip, m_farClip);
+	m_proj = Matrix::CreatePerspectiveFieldOfView(m_fovY, m_aspect, m_nearClip, m_farClip);
 }
 
 Matrix Camera::GetViewMatrix()
 {
-	return Matrix::CreateLookAt(m_eyepos, m_refpos, m_upvec);
+	return m_view;
 }
 
 Matrix Camera::GetProjectionMatrix()
 {
-	return Matrix::CreatePerspectiveFieldOfView(m_fovY, m_aspect, m_nearClip, m_farClip);
+	return m_proj;
 }
 
 void Camera::Seteyepos(Vector3 eyepos)

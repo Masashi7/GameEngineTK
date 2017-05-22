@@ -1,5 +1,5 @@
 #pragma once
-#include <d3d11.h>
+#include <d3d11_1.h>
 #include <SimpleMath.h>
 #include <Keyboard.h>
 
@@ -30,9 +30,11 @@ public:
 	void SetnearClip(float nearClip);
 	void SetfarClip(float farClip);
 
-private:
+protected:
 	// メンバ変数
 
+	DirectX::SimpleMath::Matrix m_view;
+	DirectX::SimpleMath::Matrix m_proj;
 	// 視点
 	DirectX::SimpleMath::Vector3 m_eyepos;
 	// 参照点/注視点 

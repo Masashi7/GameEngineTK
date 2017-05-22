@@ -43,7 +43,20 @@ void Game::Initialize(HWND window, int width, int height)
 	m_timer.SetTargetElapsedSeconds(1.0 / 60);
 	*/
 
+
+	// デバッグカメラ生成
+	//m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth, m_outputHeight);
+	// カメラ生成
+	m_Camera = std::make_unique<FollowCamera>(m_outputWidth, m_outputHeight);
+	// キーボードの初期化
+	keyboard = std::make_unique<Keyboard>();
+	// カメラにキーボードをセット
+	m_Camera->SetKeyboard(keyboard.get());
+
 	// 初期化はここに書く
+
+	Obj3D::InitializeStatic(m_d3dDevice, m_d3dContext, m_Camera.get());
+
 	m_batch = std::make_unique<PrimitiveBatch<VertexPositionColor>>(m_d3dContext.Get());
 
 	m_effect = std::make_unique<BasicEffect>(m_d3dDevice.Get());
@@ -73,12 +86,7 @@ void Game::Initialize(HWND window, int width, int height)
 		shaderByteCode, byteCodeLength,
 		m_inputLayout.GetAddressOf());
 
-	// デバッグカメラ生成
-	//m_debugCamera = std::make_unique<DebugCamera>(m_outputWidth, m_outputHeight);
-
-	// カメラ生成
-	m_Camera = std::make_unique<FollowCamera>(m_outputWidth, m_outputHeight);
-
+	// エフェクトファクトリ生成
 	m_factory = std::make_unique<EffectFactory>(m_d3dDevice.Get());
 	// テクスチャの読み込みパスを設定
 	m_factory->SetDirectory(L"Resources");
@@ -87,28 +95,20 @@ void Game::Initialize(HWND window, int width, int height)
 	// 天球モデルの読み込みと生成
 	m_modelSkydome = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/SkyDome.cmo", *m_factory);
 
-	// 球モデルの読み込みと生成
-	m_modelBall = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/ball.cmo", *m_factory);
-	// ティーポットモデルの読み込みと生成
-	m_modelTeapot = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/teapot.cmo", *m_factory);
-
 	// 頭モデルの読み込みと生成
 	m_modelHead = Model::CreateFromCMO(m_d3dDevice.Get(), L"Resources/head.cmo", *m_factory);
 
-	random_device rnd;     // 非決定的な乱数生成器を生成
-	mt19937_64 mt(rnd());     //  メルセンヌ・ツイスタの32ビット版、引数は初期シード値
-	uniform_int_distribution<> rand100(0, 99);        // [0, 99] 範囲の一様乱数
-	uniform_int_distribution<> rand360(0, 359);		  // [0, 359] 範囲の一様乱数
+	//random_device rnd;     // 非決定的な乱数生成器を生成
+	//mt19937_64 mt(rnd());     //  メルセンヌ・ツイスタの32ビット版、引数は初期シード値
+	//uniform_int_distribution<> rand100(0, 99);        // [0, 99] 範囲の一様乱数
+	//uniform_int_distribution<> rand360(0, 359);		  // [0, 359] 範囲の一様乱数
 
-	for (int i = 0; i < 20; i++)
-	{
-		m_posX[i] = cosf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
+	//for (int i = 0; i < 20; i++)
+	//{
+	//	m_posX[i] = cosf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
 
-		m_posZ[i] = sinf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
-	}
-
-	// キーボードの初期化
-	keyboard = std::make_unique<Keyboard>();
+	//	m_posZ[i] = sinf(XMConvertToRadians((float)(rand360(mt))))*(float)(rand100(mt));
+	//}
 }
 
 // Executes the basic game loop.
@@ -130,18 +130,33 @@ void Game::Update(DX::StepTimer const& timer)
 	// TODO: Add your game logic here.
 	elapsedTime;
 
-	m_Camera->SetTaegetPos(tank_pos);
-	m_Camera->SetTargetAngle(tank_angle);
 
 	// 毎フレーム更新処理	
 	//m_debugCamera->Update();
 	m_Camera->Update();
+
+	m_Camera->SetTaegetPos(tank_pos);
+	m_Camera->SetTargetAngle(tank_angle);
 
 	// ビュー行列を取得
 	//m_view = m_debugCamera->GetCameraMatrix();
 
 	m_view = m_Camera->GetViewMatrix();
 	m_proj = m_Camera->GetProjectionMatrix();
+	
+	// 自機のワールド行列を計算
+	// パーツ１（親）
+	Matrix rotmat = Matrix::CreateRotationY(tank_angle);
+	Matrix transmat = Matrix::CreateTranslation(tank_pos);
+	// ワールド行列を合成
+	tank_world = rotmat * transmat;
+
+	// パーツ２（子）
+	Matrix rotmat2 = Matrix::CreateRotationY(0);
+	Matrix transmat2 = Matrix::CreateTranslation(Vector3(0, 0.5f, 0));
+	// ワールド行列を合成
+	tank_world2 = rotmat2 * transmat2 * tank_world;
+
 }
 
 // Draws the scene.
@@ -176,64 +191,8 @@ void Game::Render()
 
 	// 地面モデルの描画
 	m_modelGround->Draw(m_d3dContext.Get(), m_states, Matrix::Identity, m_view, m_proj);
-
 	// 天球モデルの描画
 	m_modelSkydome->Draw(m_d3dContext.Get(), m_states, m_world, m_view, m_proj);
-
-	// 球モデルの描画
-	for (int i = 0; i < 20; i++)
-	{
-		// ヨー（方位角）
-		Matrix rotmatY;
-		if (i < 10)
-		{
-			rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) + rotCnt));
-		}
-		else
-		{
-			rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) - rotCnt));
-		}
-
-		// 平行移動
-		Matrix transmat;
-		if (i < 10)
-		{
-			transmat = Matrix::CreateTranslation(0.0f, 0, 20);
-		}
-		else
-		{
-			transmat = Matrix::CreateTranslation(0.0f, 0, 40);
-		}
-
-		// ワールド行列の合成
-		m_worldBall = transmat * rotmatY;
-
-		// モデルの描画
-		m_modelBall->Draw(m_d3dContext.Get(), m_states, m_worldBall, m_view, m_proj);
-	}
-
-	//for (int i = 0; i < 20; i++)
-	//{
-	//	//Matrix scalemat = SimpleMath::Matrix::CreateScale(1.0f);
-	//	Matrix scalemat = SimpleMath::Matrix::CreateScale((sinf(XMConvertToRadians(scaleCnt))+1.0f));
-	//	// ヨー（方位角）
-	//	Matrix rotmatY = Matrix::CreateRotationY(XMConvertToRadians(36.0f * (i + 1) + rotCnt));
-
-	//	// 平行移動
-	//	Matrix transmat = Matrix::CreateTranslation(m_posX[i] * transCnt, 0, m_posZ[i] * transCnt);
-	//	
-	//	// ワールド行列の合成
-	//	m_worldTeapot = scalemat * rotmatY * transmat;
-
-	//	// モデルの描画
-	//	m_modelTeapot->Draw(m_d3dContext.Get(), m_states, m_worldTeapot, m_view, m_proj);
-	//}
-	
-	rotCnt += 1.0f;
-	scaleCnt++;
-	transCnt -= 0.1f / 60.0f;
-	if(transCnt < 0)
-		transCnt = 0;
 
 	auto kb = keyboard->GetState();
 
@@ -241,46 +200,38 @@ void Game::Render()
 	if (kb.W)
 	{
 		// 移動量のベクトル
-		Vector3 moveV(0, 0, -0.1f);
+		Vector3 moveV(0, 0, -0.075f);
 		// 移動量ベクトルを時期に角度分回転させる
 		moveV = Vector3::TransformNormal(moveV, tank_world);
 		// 時期の座標を移動させる
 		tank_pos += moveV;
 	}
-
-	// A key is down
-	if (kb.A)
-	{
-		tank_angle += 0.1f;
-	}
-
 	// S key is down
 	if (kb.S)
 	{
 		// 移動量のベクトル
-		Vector3 moveV(0, 0, 0.1f);
+		Vector3 moveV(0, 0, 0.075f);
 		// 移動量ベクトルを時期に角度分回転させる
 		moveV = Vector3::TransformNormal(moveV, tank_world);
 		// 時期の座標を移動させる
 		tank_pos += moveV;
 	}
-
+	// A key is down
+	if (kb.A) tank_angle += 0.05f;
 	// D key is down
-	if (kb.D)
-	{
-		tank_angle += -0.1f;
-	}
+	if (kb.D) tank_angle += -0.05f;
 
 	// 時期のワールド座標を計算
 	Matrix transmat = Matrix::CreateTranslation(tank_pos);
-
-	//Matrix rotmatY = Matrix::CreateRotationY(tank_rot.y);
 	Matrix rotmatY = Matrix::CreateRotationY(tank_angle);
 
 	// 平行移動行列をワールド行列にコピー
 	tank_world = rotmatY * transmat;
 	// モデルの描画
 	m_modelHead->Draw(m_d3dContext.Get(), m_states, tank_world, m_view, m_proj);
+	m_modelHead->Draw(m_d3dContext.Get(), m_states, tank_world2, m_view, m_proj);
+	m_objPlayer.Draw();
+	m_objPlayer2.Draw();
 
     Present();
 }

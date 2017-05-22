@@ -17,6 +17,8 @@
 #include "StepTimer.h"
 
 #include "FollowCamera.h"
+#include "Obj3D.h"
+
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
@@ -74,7 +76,7 @@ private:
     // Rendering loop timer.
     DX::StepTimer                                   m_timer;
 
-	std::unique_ptr<DirectX::BasicEffect> m_effect;
+	std::unique_ptr<DirectX::BasicEffect>			m_effect;
 	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionColor>> m_batch;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
 
@@ -85,49 +87,28 @@ private:
 	// デバッグカメラ
 	//std::unique_ptr<DebugCamera> m_debugCamera;
 
-	//==ex=================================================
-	std::unique_ptr<DirectX::PrimitiveBatch<DirectX::VertexPositionNormal>> m_normalBatch;
-	//==ex=================================================
-
-	// エフェクトファクトリの作成
+	// エフェクトファクトリ
 	std::unique_ptr<DirectX::EffectFactory> m_factory;
 
 	// 地形モデル
 	std::unique_ptr<DirectX::Model> m_modelGround;
 	// 天球モデル
 	std::unique_ptr<DirectX::Model> m_modelSkydome;
-	// 球モデル
-	std::unique_ptr<DirectX::Model> m_modelBall;
-	// ティーポットモデル
-	std::unique_ptr<DirectX::Model> m_modelTeapot;
-
 	// 頭モデル
 	std::unique_ptr<DirectX::Model> m_modelHead;
-
-	// 球ワールド行列
-	DirectX::SimpleMath::Matrix m_worldBall;
-
-	// ティーポットワールド行列
-	DirectX::SimpleMath::Matrix m_worldTeapot;
-
-	float m_posX[20];
-
-	float m_posZ[20];
-
-	float rotCnt = 0.0f;
-	int scaleCnt = 0;
-	float transCnt = 1.0f;
 
 	//　キーボード変数の宣言
 	std::unique_ptr<DirectX::Keyboard> keyboard;
 
 	// 自機の座標
 	DirectX::SimpleMath::Vector3 tank_pos;
-
 	float tank_angle;
-	
 	// 自機のワールド座標
 	DirectX::SimpleMath::Matrix tank_world;
+	DirectX::SimpleMath::Matrix tank_world2;
+	// 自機の3Dオブジェクト
+	Obj3D m_objPlayer;
+	Obj3D m_objPlayer2;
 
 	// カメラ
 	std::unique_ptr<FollowCamera> m_Camera;
